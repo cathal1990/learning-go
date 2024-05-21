@@ -21,11 +21,12 @@ type tickerInfo struct {
 	O string   `json:"o"`
 }
 
+var urlTemplate = "https://api.kraken.com/0/public/Ticker?pair=%s"
 type tickerQuery struct {
 	Error  []string              `json:"error"`
 	Result map[string]tickerInfo `json:"result"`
+}
 
-var urlTemplate = "https://api.kraken.com/0/public/Ticker?pair=%s"
 
 func main() {
 	var ticker string
