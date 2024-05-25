@@ -28,6 +28,7 @@ func NewApiServer(listenAddr string, store Storage) *APIServer {
 func (s *APIServer) Run() {
 	mux := http.NewServeMux()
 
+	mux.HandleFunc("GET /accounts", makeHTTPHandleFunc(s.handleGetAccounts))
 	mux.HandleFunc("GET /account", makeHTTPHandleFunc(s.handleGetAccount))
 	mux.HandleFunc("GET /account/{id}", makeHTTPHandleFunc(s.handleGetAccountById))
 	mux.HandleFunc("POST /account", makeHTTPHandleFunc(s.handleCreateAccount))
@@ -50,6 +51,16 @@ func (s *APIServer) handleGetAccountById(w http.ResponseWriter, req *http.Reques
 	account := fmt.Sprintf("Got account for id: %s", id)
 
 	return WriteJSON(w, http.StatusOK, account)
+}
+
+func (s *APIServer) handleGetAccounts(w http.ResponseWriter, req *http.Request) error {
+	accounts, err := s.store.GetAccounts()
+
+	if err != nil {
+		return err
+	}
+
+	return WriteJSON(w, http.StatusOK, accounts)
 }
 
 func (s *APIServer) handleCreateAccount(w http.ResponseWriter, req *http.Request) error {
