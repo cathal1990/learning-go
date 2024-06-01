@@ -2,9 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 type APIFunc func(http.ResponseWriter, *http.Request) error
@@ -15,7 +15,7 @@ type APIServer struct {
 }
 
 type APIError struct {
-	Error string
+	Error string `json:"error"`
 }
 
 func NewApiServer(listenAddr string, store Storage) *APIServer {
@@ -32,7 +32,7 @@ func (s *APIServer) Run() {
 	mux.HandleFunc("GET /account", makeHTTPHandleFunc(s.handleGetAccount))
 	mux.HandleFunc("GET /account/{id}", makeHTTPHandleFunc(s.handleGetAccountById))
 	mux.HandleFunc("POST /account", makeHTTPHandleFunc(s.handleCreateAccount))
-	mux.HandleFunc("DELETE /account", makeHTTPHandleFunc(s.handleDeleteAccount))
+	mux.HandleFunc("DELETE /account/{id}", makeHTTPHandleFunc(s.handleDeleteAccount))
 
 	log.Println("API server running on port: ", s.listenAddr)
 
@@ -46,9 +46,17 @@ func (s *APIServer) handleGetAccount(w http.ResponseWriter, req *http.Request) e
 }
 
 func (s *APIServer) handleGetAccountById(w http.ResponseWriter, req *http.Request) error {
-	id := req.PathValue("id")
+	id, err := getIdFromParams(req)
 
-	account := fmt.Sprintf("Got account for id: %s", id)
+	if err != nil {
+		return WriteJSON(w, http.StatusBadRequest, err)
+	}
+
+	account, err := s.store.GetAccountById(id)
+
+	if err != nil {
+		return err
+	}
 
 	return WriteJSON(w, http.StatusOK, account)
 }
@@ -80,6 +88,17 @@ func (s *APIServer) handleCreateAccount(w http.ResponseWriter, req *http.Request
 }
 
 func (s *APIServer) handleDeleteAccount(w http.ResponseWriter, req *http.Request) error {
+	id, err := getIdFromParams(req)
+
+	if err != nil {
+		return WriteJSON(w, http.StatusBadRequest, err)
+	}
+
+	deleteErr := s.store.DeleteAccount(id)
+
+	if deleteErr != nil {
+		return deleteErr
+	}
 	return nil
 }
 
@@ -100,4 +119,13 @@ func makeHTTPHandleFunc(f APIFunc) http.HandlerFunc {
 			WriteJSON(w, http.StatusBadRequest, APIError{Error: err.Error()})
 		}
 	}
+}
+
+func getIdFromParams(r *http.Request) (int64, error) {
+	id := r.PathValue("id")
+
+	parsedId, err := strconv.ParseInt(id, 10, 64)
+
+	return parsedId, err
+
 }
